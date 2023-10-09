@@ -97,146 +97,9 @@ class MLP(nn.Module):
     def forward(self, x):
         return self.hidden_layers(x)
     
-class MyLoss(nn.Module):
-    def __init__(self, weight=1.0, alpha = 0.01, beta = 100):
-        super(MyLoss, self).__init__()
-        self.weight = weight
-        self.beta = beta
-        self.alpha = alpha
-    
-    def forward(self, predictions, targets):
-        N = predictions.shape[0]
-        loss = torch.tensor(0, dtype=torch.float32, requires_grad=True)
-        same_loss = 0
-        diff_loss = 0
-        same_num = 0 
-        diff_num = 0
-        
-        for i in range(N-1):
-            for j in range(i+1, N):
-                if targets[i] == targets[j]:  
-                    distance = torch.dist(predictions[i], predictions[j], p=2)
-                    # print(distance)
-                    same_loss += distance
-                    same_num += 1
-                else:
-                    distance = torch.dist(predictions[i], predictions[j], p=2)
-                    diff_loss += torch.exp(-distance)
-                    diff_num += 1
-        if same_num != 0:
-            same_loss /= same_num 
-        if diff_num != 0:
-            diff_loss /= diff_num
-        loss = self.alpha * same_loss + self.beta * diff_loss
-        
-        # loss = same_loss / same_num
-        loss *= self.weight
-        return loss
-
-    # def forward(self, predictions, targets):
-    #     N = predictions.shape[0]
-    #     loss = 0
-    #     same_loss = 0
-    #     diff_loss = 0
-    #     same_num = 0 
-    #     diff_num = 0
-        
-    #     # for i in range(N-1):
-    #     #     for j in range(i+1, N):
-    #     #         frame_i = targets[i, 1].cpu().detach().numpy()
-    #     #         frame_j = targets[j, 1].cpu().detach().numpy()
-    #     #         distance = my_dtw(predictions[i,:frame_i,:], predictions[i,:frame_j,:])
-    #     #         if targets[i, 0] == targets[j, 0]:       
-    #     #             same_loss += distance
-    #     #             same_num += 1
-    #     #         else:
-    #     #             diff_loss += torch.exp(-distance)
-    #     #             diff_num += 1
-    #     #         # print(frame_i, frame_j, distance)
-    #     # if same_num != 0:
-    #     #     same_loss /= same_num 
-    #     # if diff_num != 0:
-    #     #     diff_loss /= diff_num
-    #     # print(same_loss, diff_loss)
-    #     # loss = self.alpha * same_loss + self.beta * diff_loss
-        
-    #     for i in range(N-1):
-    #         for j in range(i+1, N):
-    #             if targets[i, 0] == targets[j, 0]:  
-    #                 frame_i = targets[i, 1].cpu().detach().numpy()
-    #                 frame_j = targets[j, 1].cpu().detach().numpy()
-    #                 distance, path = fastdtw(predictions[i,:frame_i,:].cpu().detach().numpy(),
-    #                                    predictions[i,:frame_j,:].cpu().detach().numpy())
-    #                 same_loss += distance
-    #                 same_num += 1
-    #     if same_num != 0:
-    #         same_loss /= same_num 
-    #     print(same_num)
-    #     loss = same_loss
-        
-    #     # loss = same_loss / same_num
-    #     loss *= self.weight
-    #     return torch.tensor(loss, dtype=torch.float32, requires_grad=True)
-
-class One_Shot_same_Loss(nn.Module):
-    def __init__(self, weight=1.0):
-        super(One_Shot_same_Loss, self).__init__()
-        self.weight = weight
-    
-    def forward(self, predictions, targets):
-        N = predictions.shape[0]
-        loss = torch.tensor(0, dtype=torch.float32, requires_grad=True)
-        num = 0
-        
-        for i in range(N-1):
-            for j in range(i+1, N):
-                if targets[i] == targets[j]:  
-                    distance = torch.dist(predictions[i], predictions[j], p=2)
-                    # print(distance)
-                    loss = loss + distance
-                    num += 1
-        loss = loss / num
-        loss *= self.weight
-        return loss
-    
-class One_shot_double_loss(nn.Module):
-    def __init__(self, alpha, beta, weight=1.0):
-        super(One_shot_double_loss, self).__init__()
-        self.weight = weight
-        self.beta = beta
-        self.alpha = alpha
-    
-    def forward(self, predictions, targets):
-        N = predictions.shape[0]
-        loss = torch.tensor(0, dtype=torch.float32, requires_grad=True)
-        same_loss = torch.tensor(0, dtype=torch.float32, requires_grad=True)
-        diff_loss = torch.tensor(0, dtype=torch.float32, requires_grad=True)
-        same_num = 0 
-        diff_num = 0
-        
-        for i in range(N-1):
-            for j in range(i+1, N):
-                distance = torch.dist(predictions[i], predictions[j], p=2)
-                if targets[i] == targets[j]:  
-                    same_loss = same_loss + distance
-                    same_num += 1
-                else:
-                    diff_loss = diff_loss + 1 / distance
-                    diff_num += 1
-        if same_num != 0:
-            same_loss /= same_num 
-        if diff_num != 0:
-            diff_loss /= diff_num
-        loss = self.alpha * same_loss + self.beta * diff_loss
-        
-        loss *= self.weight
-        return loss, same_loss, diff_loss
-    
 class Udf_loss(nn.Module):
-    def __init__(self, alpha=1, weight=1.0):
+    def __init__(self):
         super(Udf_loss, self).__init__()
-        self.weight = weight
-        self.alpha = alpha
     
     def forward(self, predictions, data):
         N = predictions.shape[0]
@@ -254,29 +117,6 @@ class Udf_loss(nn.Module):
                 # print(self.alpha)
                 # print(self.alpha * distance - dis)
                 # print(torch.abs(self.alpha * distance - dis))
-                loss = loss + torch.abs(self.alpha * distance - dis)
-                # print("loss = ", loss)
-                # print(loss)
-                num += 1    
-        loss /= num
-     
-        return loss
-    
-class Udf_time_line_loss(nn.Module):
-    def __init__(self, alpha=1, weight=1.0):
-        super(Udf_time_line_loss, self).__init__()
-        self.weight = weight
-        self.alpha = alpha
-    
-    def forward(self, predictions, data):
-        N = predictions.shape[0]
-        loss = torch.tensor(0, dtype=torch.float32, requires_grad=True)
-        num = 0
-        # print(loss)
-        for i in range(N-1):
-            for j in range(i, N):
-                distance = torch.dist(predictions[i], predictions[j], p=2)
-                dis = get_bone_distance(data[i], data[j])
                 loss = loss + torch.abs(self.alpha * distance - dis)
                 # print("loss = ", loss)
                 # print(loss)
@@ -360,11 +200,6 @@ if __name__=="__main__":
     learning_rate = 1e-4    
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-6)
     
-    loss1 = One_Shot_same_Loss().to(device=device)
-    loss2 = One_shot_double_loss(alpha=1, beta=10).to(device=device)
-    loss3 = Udf_loss(alpha=1).to(device=device)
-    # loss4 = Udf_time_line_loss().to(device=device)
+    loss = Udf_loss().to(device=device)
     
-    # PATH = './runs/' + arg.benchmark + '/' + arg.name + ".pth"
-    
-    train(model, optimizer, train_data, val_data, arg, loss3, epochs=100, batch_size=32)
+    train(model, optimizer, train_data, val_data, arg, loss, epochs=100, batch_size=32)

@@ -33,131 +33,7 @@ mid_joints = ((3, 4),
 first_joints = (3, 7, 11, 15, 19)
 base_joints = (2, 6, 10, 14, 18)
 
-def get_angle(a, b):
-    cos_angle = a.dot(b) / (np.sqrt(a.dot(a)) * np.sqrt(b.dot(b)))
-    if cos_angle >= 1 or cos_angle <= -1:
-        print(a, b, cos_angle, "error")
-    angle = np.arccos(cos_angle) / np.pi * 180
-    return angle
-
-def get_cos(a, b):
-    return a.dot(b) / (np.sqrt(a.dot(a)) * np.sqrt(b.dot(b)))
-
-# 5 * (angle_rotate, angle_first, angle_second)
-def get_angle_15(data):
-    num_frame = data.shape[0]
-    output = np.zeros((num_frame, 15), dtype=np.float64)
-    for i in range(num_frame):
-        for finger_idx in range(len(mid_joints)):
-            base_joint = base_joints[finger_idx]
-            angle = get_angle((data[i, 1, :] - data[i, base_joint, :]), 
-                              (data[i, base_joint + 1, :] - data[i, base_joint, :]))
-            output[i, 3 * finger_idx] = angle
-            
-            mid_joint_pair = mid_joints[finger_idx]
-            angle = get_angle((data[i, mid_joint_pair[0] - 1, :] - data[i, mid_joint_pair[0], :]), 
-                                (data[i, mid_joint_pair[0] + 1, :] - data[i, mid_joint_pair[0], :]))
-            output[i, 3 * finger_idx + 1] = angle    
-
-            angle = get_angle((data[i, mid_joint_pair[1] - 1, :] - data[i, mid_joint_pair[1], :]), 
-                    (data[i, mid_joint_pair[1] + 1, :] - data[i, mid_joint_pair[1], :]))
-            output[i, 3 * finger_idx + 2] = angle  
-    return output 
-    
-# 5 * (rotate_vector, angle_first, angle_second)
-def get_angle_25(data):
-    num_frame = data.shape[0]
-    output = np.zeros((num_frame, 15), dtype=np.float64)
-    for i in range(num_frame):
-        for finger_idx in range(len(mid_joints)):
-            first_joint = first_joints[finger_idx]
-            output[i, 5 * finger_idx: 5 * finger_idx + 3] = data[i, first_joint, :] - data[i, 1, :]
-            
-            mid_joint_pair = mid_joints[finger_idx]
-            angle = get_angle((data[i, mid_joint_pair[0] - 1, :] - data[i, mid_joint_pair[0], :]), 
-                                (data[i, mid_joint_pair[0] + 1, :] - data[i, mid_joint_pair[0], :]))
-            output[i, 5 * finger_idx + 3] = angle    
-
-            angle = get_angle((data[i, mid_joint_pair[1] - 1, :] - data[i, mid_joint_pair[1], :]), 
-                    (data[i, mid_joint_pair[1] + 1, :] - data[i, mid_joint_pair[1], :]))
-            output[i, 5 * finger_idx + 4] = angle      
-    return output 
-
-def get_cos_angle_25(data):
-    num_frame = data.shape[0]
-    output = np.zeros((num_frame, 25), dtype=np.float64)
-    for i in range(num_frame):
-        for finger_idx in range(len(mid_joints)):
-            first_joint = first_joints[finger_idx]
-            output[i, 5 * finger_idx: 5 * finger_idx + 3] = data[i, first_joint, :] - data[i, 1, :]
-            
-            mid_joint_pair = mid_joints[finger_idx]
-            angle = get_cos((data[i, mid_joint_pair[0] - 1, :] - data[i, mid_joint_pair[0], :]), 
-                                (data[i, mid_joint_pair[0] + 1, :] - data[i, mid_joint_pair[0], :]))
-            output[i, 5 * finger_idx + 3] = angle    
-
-            angle = get_cos((data[i, mid_joint_pair[1] - 1, :] - data[i, mid_joint_pair[1], :]), 
-                    (data[i, mid_joint_pair[1] + 1, :] - data[i, mid_joint_pair[1], :]))
-            output[i, 5 * finger_idx + 4] = angle      
-    return output 
-
-# frame * (root_location, root_rotation)
-def get_global(data):
-    num_frame = data.shape[0]
-    output = np.zeros((num_frame, 6), dtype=np.float64)
-    
-    # output_angle = np.zeros((num_frame, 25), dtype=np.float64)
-    #load wrist position
-    output[:, 0:3] = data[:, 0, :]
-    
-    #load wrist rotation
-    output[:, 3:6] = data[:, 1, :] - data[:, 0, :]
-    return output
-
-def get_global_dert(data):
-    num_frame = data.shape[0]
-    output = np.zeros((num_frame -1, 7), dtype=np.float64)
-    for i in range(num_frame-1):
-        output[i, :3] = data[i+1, 0, :] - data[i, 0, :]
-        
-        output[i, 3:] = getQuaternion(data[i, 1, :] - data[i, 0, :], 
-                                      data[i+1, 1, :] - data[i+1, 0, :])
-    # print(output)
-    return output
-    
-def getQuaternion(fromVector, toVector):
-        fromVector_e = fromVector / np.linalg.norm(fromVector)
- 
-        toVector_e = toVector / np.linalg.norm(toVector)
- 
-        cross = np.cross(fromVector_e, toVector_e)
- 
-        cross_e = cross / np.linalg.norm(cross)
- 
-        dot = np.dot(fromVector_e, toVector_e)
- 
-        angle = np.arccos(dot)
- 
- 
-        # if angle == 0 or angle == np.pi:
-        #     print("两个向量处于一条直线")
-        #     return False
-        # else:
-        return [cross_e[0]*np.sin(angle/2), cross_e[1]*np.sin(angle/2), cross_e[2]*np.sin(angle/2), np.cos(angle/2)]
-
-def get_vector_45(data):
-    num_frame = data.shape[0]
-    output = np.zeros((num_frame, 45), dtype=np.float64)
-    for i in range(num_frame):
-        for finger_idx in range(len(mid_joints)):
-            first_joint = first_joints[finger_idx]
-            output[i, 9 * finger_idx : 9 * finger_idx + 3] = data[i, first_joint, :] - data[i, 1, :]
-            
-            mid_joint_pair = mid_joints[finger_idx]
-            output[i, 9 * finger_idx + 3 : 9 * finger_idx + 6] = data[i, mid_joint_pair[0] + 1, :] - data[i, mid_joint_pair[0] - 1, :]  
-            output[i, 9 * finger_idx + 6 : 9 * finger_idx + 9] = data[i, mid_joint_pair[1] + 1, :] - data[i, mid_joint_pair[1] - 1, :]      
-    return output 
-
+# (num, 2) -> label and frame
 def gen_label_and_frame(data_path, out_path, benchmark, part):
     sample_label = []
     idx_filename = os.path.join(data_path, "{}_gestures.txt".format('test' if part=='val' else part))
@@ -178,60 +54,85 @@ def gen_label_and_frame(data_path, out_path, benchmark, part):
     print(label.shape)
     np.save('{}/{}_label_and_frame.npy'.format(out_path, part), label)
 
-def gen_shot(data_path, out_path, benchmark, part, feature):
-    sample_label = []
+def get_angle(a, b):
+    cos_angle = a.dot(b) / (np.sqrt(a.dot(a)) * np.sqrt(b.dot(b)))
+    if cos_angle >= 1 or cos_angle <= -1:
+        print(a, b, cos_angle, "error")
+    angle = np.arccos(cos_angle) / np.pi * 180
+    return angle
+
+def get_angle_15(data):
+    num_frame = data.shape[0]
+    output = np.zeros((num_frame, 15), dtype=np.float64)
+    for i in range(num_frame):
+        for finger_idx in range(len(mid_joints)):
+            base_joint = base_joints[finger_idx]
+            angle = get_angle((data[i, 1, :] - data[i, base_joint, :]), 
+                              (data[i, base_joint + 1, :] - data[i, base_joint, :]))
+            output[i, 3 * finger_idx] = angle
+            
+            mid_joint_pair = mid_joints[finger_idx]
+            angle = get_angle((data[i, mid_joint_pair[0] - 1, :] - data[i, mid_joint_pair[0], :]), 
+                                (data[i, mid_joint_pair[0] + 1, :] - data[i, mid_joint_pair[0], :]))
+            output[i, 3 * finger_idx + 1] = angle    
+
+            angle = get_angle((data[i, mid_joint_pair[1] - 1, :] - data[i, mid_joint_pair[1], :]), 
+                    (data[i, mid_joint_pair[1] + 1, :] - data[i, mid_joint_pair[1], :]))
+            output[i, 3 * finger_idx + 2] = angle  
+    return output 
+
+# (all frame, 15) -> 5 fingers, angle from base joint to root joint, first joint angle, second joint angle
+def gen_angle_15(data_path, out_path, benchmark, part, feature):
     idx_filename = os.path.join(data_path, "{}_gestures.txt".format('test' if part=='val' else part))
     data_idx = np.loadtxt(idx_filename, dtype=np.int32)
-    # get data folder and label
-    for id_gesture, id_finger, id_subject, id_essai, label_14, label_28, size_sequence in data_idx:
-        if benchmark == '14':
-            sample_label.append(label_14-1)
-        else:
-            sample_label.append(label_28-1)
 
-    label = []
-    f_global = np.zeros((len(sample_label), 180, 6), dtype=np.float64)
-    f_angle = []
+    f = []
 
     sum_frame = 0
-
     for i, (id_gesture, id_finger, id_subject, id_essai, label_14, label_28, size_sequence) in enumerate(tqdm(data_idx)):
         filename = os.path.join(data_path, 'gesture_{}/finger_{}/subject_{}/essai_{}/skeletons_world.txt'.format(
             id_gesture, id_finger, id_subject, id_essai))
         data = np.loadtxt(filename, dtype=np.float64)
         data = np.reshape(data, (-1, 22, 3)) # (num_frame, num_joint, 3)
         num_frame = data.shape[0]
-        
-        output_global = get_global(data)
-        feature = None
-        if feature == "15":
-            output_angle = get_angle_15(data)
-        elif feature == "25":
-            output_angle = get_angle_25(data)
+        output = get_angle_15(data)
         #data: (frame, feature)
         sum_frame += num_frame
-        for frame in range(num_frame):
-            label.append(sample_label[i])
-        f_global[i, :num_frame, :] = output_global
-        f_angle.append(output_angle)
+        f.append(output)
 
     f_angles = np.zeros((sum_frame, 15), dtype=np.float64)
     start = 0
-    for angle in f_angle:
+    for angle in f:
         frame = angle.shape[0]
         f_angles[start:start + frame, :] = angle
         start += frame
     
-    # fp store 3d skeleton
-    # fp = pre_normalization(fp)
-    label = np.array(label, dtype=np.int32)
-    print(label.shape)
-    print(f_global.shape)
     print(f_angles.shape)
-    np.save('{}/{}_label.npy'.format(out_path, part), label)
-    np.save('{}/{}_global.npy'.format(out_path, part), f_global)
     np.save('{}/{}_angle_15.npy'.format(out_path, part), f_angles)
+ 
+def get_cos(a, b):
+    return a.dot(b) / (np.sqrt(a.dot(a)) * np.sqrt(b.dot(b)))
+    
+def get_cos_angle_25(data):
+    num_frame = data.shape[0]
+    output = np.zeros((num_frame, 25), dtype=np.float64)
+    for i in range(num_frame):
+        for finger_idx in range(len(mid_joints)):
+            first_joint = first_joints[finger_idx]
+            output[i, 5 * finger_idx: 5 * finger_idx + 3] = data[i, first_joint, :] - data[i, 1, :]
+            
+            mid_joint_pair = mid_joints[finger_idx]
+            angle = get_cos((data[i, mid_joint_pair[0] - 1, :] - data[i, mid_joint_pair[0], :]), 
+                                (data[i, mid_joint_pair[0] + 1, :] - data[i, mid_joint_pair[0], :]))
+            output[i, 5 * finger_idx + 3] = angle    
 
+            angle = get_cos((data[i, mid_joint_pair[1] - 1, :] - data[i, mid_joint_pair[1], :]), 
+                    (data[i, mid_joint_pair[1] + 1, :] - data[i, mid_joint_pair[1], :]))
+            output[i, 5 * finger_idx + 4] = angle      
+    return output 
+
+# 3d vector + angle + angle, perhaps have bug
+# (all frame, 25) -> 5 fingers, 3d base joint - root joint, 1d first joint angle's cos, 1d second joint angle's cos
 def gen_cos_angle_25(data_path, out_path, benchmark, part):
     idx_filename = os.path.join(data_path, "{}_gestures.txt".format('test' if part=='val' else part))
     data_idx = np.loadtxt(idx_filename, dtype=np.int32)
@@ -260,6 +161,20 @@ def gen_cos_angle_25(data_path, out_path, benchmark, part):
     print(f_angles.shape)
     np.save('{}/{}_cos_angle_25.npy'.format(out_path, part), f_angles)
 
+def get_vector_45(data):
+    num_frame = data.shape[0]
+    output = np.zeros((num_frame, 45), dtype=np.float64)
+    for i in range(num_frame):
+        for finger_idx in range(len(mid_joints)):
+            first_joint = first_joints[finger_idx]
+            output[i, 9 * finger_idx : 9 * finger_idx + 3] = data[i, first_joint, :] - data[i, 1, :]
+            
+            mid_joint_pair = mid_joints[finger_idx]
+            output[i, 9 * finger_idx + 3 : 9 * finger_idx + 6] = data[i, mid_joint_pair[0] + 1, :] - data[i, mid_joint_pair[0] - 1, :]  
+            output[i, 9 * finger_idx + 6 : 9 * finger_idx + 9] = data[i, mid_joint_pair[1] + 1, :] - data[i, mid_joint_pair[1] - 1, :]      
+    return output 
+
+# (all frame, 45) -> 5 fingers, base joint - root joint, second joint - base joint, fingertip - first joint
 def gen_vector_45(data_path, out_path, benchmark, part):
     idx_filename = os.path.join(data_path, "{}_gestures.txt".format('test' if part=='val' else part))
     data_idx = np.loadtxt(idx_filename, dtype=np.int32)
@@ -288,6 +203,38 @@ def gen_vector_45(data_path, out_path, benchmark, part):
     print(f_angles.shape)
     np.save('{}/{}_vector_45.npy'.format(out_path, part), f_angles)
 
+def getQuaternion(fromVector, toVector):
+        fromVector_e = fromVector / np.linalg.norm(fromVector)
+ 
+        toVector_e = toVector / np.linalg.norm(toVector)
+ 
+        cross = np.cross(fromVector_e, toVector_e)
+ 
+        cross_e = cross / np.linalg.norm(cross)
+ 
+        dot = np.dot(fromVector_e, toVector_e)
+ 
+        angle = np.arccos(dot)
+ 
+ 
+        # if angle == 0 or angle == np.pi:
+        #     print("两个向量处于一条直线")
+        #     return False
+        # else:
+        return [cross_e[0]*np.sin(angle/2), cross_e[1]*np.sin(angle/2), cross_e[2]*np.sin(angle/2), np.cos(angle/2)]
+    
+def get_global_dert(data):
+    num_frame = data.shape[0]
+    output = np.zeros((num_frame -1, 7), dtype=np.float64)
+    for i in range(num_frame-1):
+        output[i, :3] = data[i+1, 0, :] - data[i, 0, :]
+        
+        output[i, 3:] = getQuaternion(data[i, 1, :] - data[i, 0, :], 
+                                      data[i+1, 1, :] - data[i+1, 0, :])
+    # print(output)
+    return output
+    
+# (num, frame, 7) -> 3d root position offset and 4d root bone rotation, i frame to i+1 frame
 def gen_global_dert(data_path, out_path, benchmark, part):
     idx_filename = os.path.join(data_path, "{}_gestures.txt".format('test' if part=='val' else part))
     data_idx = np.loadtxt(idx_filename, dtype=np.int32)
@@ -332,7 +279,6 @@ def get_rotate_matrix(pre_vector, new_vector):
     ])
     
     return rotation_matrix
-    
 
 def adjust(data):
     new_frame = np.zeros((22, 3), dtype=np.float64)
@@ -353,7 +299,9 @@ def get_bone_data(data):
         pair = pairs[i]
         bone[i, :] = data[pair[0]-1, :] - data[pair[1]-1, :]
     return bone
-    
+
+# adjust the hand to z axis, perhaps have bug
+# (all frame, 21, 3) -> 21 bone, 3d rotation = pair[1].position - pair[0].position     
 def gen_bone(data_path, out_path, benchmark, part):
     idx_filename = os.path.join(data_path, "{}_gestures.txt".format('test' if part=='val' else part))
     data_idx = np.loadtxt(idx_filename, dtype=np.int32)
@@ -372,7 +320,8 @@ def gen_bone(data_path, out_path, benchmark, part):
     bone_data = np.array(bones, dtype=np.float64)
     print(bone_data.shape)
     np.save('{}/{}_bone_data.npy'.format(out_path, part), bone_data)
-    
+
+# (all frame, 21, 3) -> 21 bone, 3d rotation = pair[1].position - pair[0].position   
 def gen_bone_no_adjust(data_path, out_path, benchmark, part):
     idx_filename = os.path.join(data_path, "{}_gestures.txt".format('test' if part=='val' else part))
     data_idx = np.loadtxt(idx_filename, dtype=np.int32)
@@ -391,60 +340,7 @@ def gen_bone_no_adjust(data_path, out_path, benchmark, part):
     print(bone_data.shape)
     np.save('{}/{}_bone_data_no_adjust.npy'.format(out_path, part), bone_data)
 
-def get_bone_distance(data1, data2):
-    distance = 0
-    for pair in pairs:
-        cos_angle = get_cos((data1[pair[0]-1, :] - data1[pair[1]-1, :]), (data2[pair[0]-1, :] - data2[pair[1]-1, :]))
-        distance += 1 - cos_angle * cos_angle
-    return np.sqrt(distance)
-        
-def gen_bone_distance(data_path, out_path, benchmark, part):
-    idx_filename = os.path.join(data_path, "{}_gestures.txt".format('test' if part=='val' else part))
-    data_idx = np.loadtxt(idx_filename, dtype=np.int32)
-    
-    vectors = []
-    for i, (id_gesture, id_finger, id_subject, id_essai, label_14, label_28, size_sequence) in enumerate(tqdm(data_idx)):
-        filename = os.path.join(data_path, 'gesture_{}/finger_{}/subject_{}/essai_{}/skeletons_world.txt'.format(
-            id_gesture, id_finger, id_subject, id_essai))
-        data = np.loadtxt(filename, dtype=np.float64)
-        data = np.reshape(data, (-1, 22, 3)) # (num_frame, num_joint, 3)
-        for frame in range(data.shape[0]):
-            vectors.append(data[frame])
-    
-    print(len(vectors))       
-    bone_distance = np.zeros((len(vectors), len(vectors)), dtype=np.float64)
-    for i in range(bone_distance.shape[0]):
-        for j in range(bone_distance.shape[1]):
-            vector_i = adjust(vectors[i])
-            vector_j = adjust(vectors[j])
-            bone_distance[i, j] = get_bone_distance(vector_i, vector_j)
-            if i == j:
-                print(bone_distance)
-    print(bone_distance.shape)
-    np.save('{}/{}_bone_distance.npy'.format(out_path, part), bone_distance)
-
-def gen_bone_time_line(data_path, out_path, benchmark, part):
-    idx_filename = os.path.join(data_path, "{}_gestures.txt".format('test' if part=='val' else part))
-    data_idx = np.loadtxt(idx_filename, dtype=np.int32)
-    
-    bones = []
-    for i, (id_gesture, id_finger, id_subject, id_essai, label_14, label_28, size_sequence) in enumerate(tqdm(data_idx)):
-        filename = os.path.join(data_path, 'gesture_{}/finger_{}/subject_{}/essai_{}/skeletons_world.txt'.format(
-            id_gesture, id_finger, id_subject, id_essai))
-        data = np.loadtxt(filename, dtype=np.float64)
-        data = np.reshape(data, (-1, 22, 3)) # (num_frame, num_joint, 3)
-        single_bone_data = np.zeros((180, 63), dtype=np.float64)
-        for frame in range(data.shape[0]):
-            reg_data = adjust(data[frame])      
-            output = get_bone_data(reg_data)
-            single_bone_data[frame, :] = output.reshape(63)
-        bones.append(single_bone_data)
-
-
-    bone_data = np.array(bones, dtype=np.float64)
-    print(bone_data.shape)
-    np.save('{}/{}_bone_time_line.npy'.format(out_path, part), bone_data)
-    
+#（num, frame, 3）-> i+1 frame root position - i frame root position     
 def gen_root_dert(data_path, out_path, benchmark, part):
     idx_filename = os.path.join(data_path, "{}_gestures.txt".format('test' if part=='val' else part))
     data_idx = np.loadtxt(idx_filename, dtype=np.int32)
